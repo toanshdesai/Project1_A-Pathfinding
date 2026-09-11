@@ -9,7 +9,14 @@
 
 import math
 import pygame
+import bfs
+from collections import deque
 
+search_state = "idle"        # "idle" | "running" | "done" | "no_path"
+queue = deque()
+visited = set()
+parent = {}
+path = []
 # ---------- constants ----------
 CELL = 24                 # pixel size of one square
 COLS, ROWS = 30, 30       # grid dimensions
@@ -19,6 +26,7 @@ COST_NORMAL = 1
 COST_MUD = 5              # "costly" terrain
 WALL = math.inf           # a wall is just an infinitely expensive cell
 last_cell = None          # last cell cycled during the current drag; None = not dragging
+STEPS_PER_FRAME = 3       # search speed: cells expanded per frame
 
 # colors (R, G, B)
 WHITE = (255, 255, 255)   # normal cell
@@ -27,6 +35,9 @@ BLACK = (30, 30, 30)      # wall
 GREEN = (80, 200, 120)    # start
 PURPLE = (160, 60, 200)   # goal
 GRID_LINE = (200, 200, 200)
+BLUE = (70, 130, 220)     # final path
+LIGHT_GREEN = (150, 230, 170)  # frontier (in queue)
+PINK = (235, 160, 160)    # visited / explored
 
 # ---------- state ----------
 # grid[row][col] holds the COST of stepping onto that cell.
@@ -48,11 +59,18 @@ def cycle_cell(row, col):
 
 
 def cell_color(row, col):
-    """Decide what color a cell should be drawn, checking special cells first."""
-    if (row, col) == start:
+    """Cell color by priority: special cells first, then search layers, then terrain."""
+    cell = (row, col)
+    if cell == start:
         return GREEN
-    if (row, col) == goal:
+    if cell == goal:
         return PURPLE
+    if cell in path:
+        return BLUE
+    if cell in queue:                 # frontier: discovered, not yet expanded
+        return LIGHT_GREEN
+    if cell in visited:               # expanded (or discovered) cells
+        return PINK
     if grid[row][col] == WALL:
         return BLACK
     if grid[row][col] == COST_MUD:
@@ -66,7 +84,7 @@ def main():
     pygame.display.set_caption("Project1_Pathfinding")
     clock = pygame.time.Clock()
 
-    global goal, last_cell
+    global goal, last_cell, search_state, queue, visited, parent, path
     running = True
     while running:                                  # ---- the game loop ----
         # 1) EVENTS: everything the user did since last frame
@@ -74,7 +92,7 @@ def main():
             if event.type == pygame.QUIT:           # window's X button
                 running = False
 
-            elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1:
+            elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1 and search_state == "idle":
                 mx, my = event.pos
                 col, row = mx // CELL, my // CELL
                 if not (0 <= row < ROWS and 0 <= col < COLS):
@@ -83,7 +101,7 @@ def main():
                     cycle_cell(row, col)
                     last_cell = (row, col)
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN and search_state == "idle":
                 mx, my = event.pos
                 col, row = mx // CELL, my // CELL
                 if not (0 <= row < ROWS and 0 <= col < COLS):
@@ -95,8 +113,35 @@ def main():
                 elif event.button == 3:
                     if (row, col) != start and grid[row][col] != WALL:
                         goal = (row, col)
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and search_state == "idle":
                 last_cell = None
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and search_state == "idle":
+                    # reset & seed
+                    queue = deque([start])
+                    visited = {start}
+                    parent = {}
+                    path = []
+                    search_state = "running"
+
+                elif event.key == pygame.K_r:
+                    # reset — everything back to empties, search_state = "idle"
+                    queue = deque()
+                    visited = set()
+                    parent = {}
+                    path = []
+                    search_state = "idle"
+
+        # ---- advance the search (between events and drawing) ----
+        if search_state == "running":
+            for _ in range(STEPS_PER_FRAME):
+                search_state = bfs.bfs_step(grid, queue, visited, parent, goal)
+                if search_state != "running":
+                    if search_state == "done":
+                        path = bfs.reconstruct(parent, start, goal)
+                    break
 
         # 2) DRAW: repaint the whole grid from the data, every frame
         screen.fill(GRID_LINE)

@@ -13,7 +13,7 @@ def neighbors(grid, row, col):
 
     results = []
 
-    for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+    for dr, dc in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
         nr, nc = row + dr, col + dc
         if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] != WALL:
             results.append((nr, nc))
