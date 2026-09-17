@@ -5,10 +5,7 @@
 #   B / A / D         : select BFS / A* / Dijkstra (only while idle)
 #   SPACE             : run the selected algorithm
 #   R                 : reset the search (keeps the maze; unlocks editing)
-#
-# AI-use note (per DA Honor Code): pygame scaffolding, integration wiring, and
-# debugging assistance by Claude (Anthropic). Search algorithms in bfs.py and
-# astar.py written by me. See README for details.
+#   C                 : clear the maze (resets all cells to normal)
 
 import math
 import pygame
