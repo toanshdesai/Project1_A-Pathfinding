@@ -19,7 +19,9 @@ from collections import deque
 # ---------- constants ----------
 CELL = 24                 # pixel size of one square
 COLS, ROWS = 30, 30       # grid dimensions
-WIDTH, HEIGHT = COLS * CELL, ROWS * CELL
+HEADER = 50               # pixels height for header
+WIDTH = COLS * CELL
+HEIGHT = ROWS * CELL + HEADER
 
 COST_NORMAL = 1
 COST_MUD = 5              # "costly" terrain
@@ -105,9 +107,11 @@ def cell_color(row, col):
 
 def main():
     pygame.init()
+    font = pygame.font.SysFont('timesnewroman', 36)
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Project1_Pathfinding")
     clock = pygame.time.Clock()
+    text = ""
 
     global goal, last_cell, search_state, algorithm, current_h
     global queue, visited, open_heap, g_scores, closed, counter, parent, path
@@ -122,7 +126,7 @@ def main():
             elif event.type == pygame.MOUSEMOTION and event.buttons[0] == 1 \
                     and search_state == "idle":
                 mx, my = event.pos
-                col, row = mx // CELL, my // CELL
+                col, row = mx // CELL, (my - HEADER) // CELL
                 if not (0 <= row < ROWS and 0 <= col < COLS):
                     continue
                 if (row, col) != last_cell and (row, col) not in (start, goal):
@@ -131,7 +135,7 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONDOWN and search_state == "idle":
                 mx, my = event.pos
-                col, row = mx // CELL, my // CELL
+                col, row = mx // CELL, (my - HEADER) // CELL
                 if not (0 <= row < ROWS and 0 <= col < COLS):
                     continue
                 if event.button == 1:
@@ -175,16 +179,27 @@ def main():
                     path = []
                     search_state = "idle"
                 elif event.key == pygame.K_m and search_state == "idle":
+                    for r in range(0,ROWS):
+                        for c in range(0, COLS):
+                            grid[r][c] = COST_NORMAL
                     for r in range(8, ROWS):
                         for c in range(10, 18):
                             grid[r][c] = COST_MUD
                     goal = (15,27)
+                elif event.key == pygame.K_c and search_state == "idle":
+                    for r in range(0, ROWS):
+                        for c in range(0, COLS):
+                            grid[r][c] = COST_NORMAL
+                    goal = (0,29)
                 elif event.key == pygame.K_b and search_state == "idle":
                     algorithm = "bfs"
+                    text = "Current Algorithm: BFS"
                 elif event.key == pygame.K_a and search_state == "idle":
                     algorithm = "astar"
+                    text = "Current Algorithm: A*"
                 elif event.key == pygame.K_d and search_state == "idle":
                     algorithm = "dijkstra"
+                    text = "Current Algorithm: Dijkstra"
 
         # ---- advance the search (between events and drawing) ----
         if search_state == "running":
@@ -205,9 +220,12 @@ def main():
 
         # 2) DRAW: repaint the whole grid from the data, every frame
         screen.fill(GRID_LINE)
+        # Write in the header
+        output = font.render(text, True, BLACK)
+        screen.blit(output, (10, 10))
         for row in range(ROWS):
             for col in range(COLS):
-                rect = (col * CELL + 1, row * CELL + 1, CELL - 2, CELL - 2)
+                rect = (col * CELL + 1, (row * CELL + 1) + HEADER, CELL - 2, CELL - 2)
                 pygame.draw.rect(screen, cell_color(row, col), rect)
 
         # 3) SHOW the finished frame, then wait for next tick
